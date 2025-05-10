@@ -172,3 +172,12 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Models folder
+models/
+
+# VSCode settings
+.vscode/
+
+# Audio files
+*.wav
