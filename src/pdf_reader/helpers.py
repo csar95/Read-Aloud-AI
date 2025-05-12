@@ -55,7 +55,7 @@ def detect_header_footer(
     """
     first_last_lines = []
     for page_id in range(len(document)):
-        page_text = document[page_id].get_textpage().get_text_range()
+        page_text = document[page_id].get_textpage().get_text_bounded()
         page_lines = [line for line in page_text.splitlines() if line.strip() != ""]
         nonblank_lines = [
             line

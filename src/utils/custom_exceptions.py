@@ -9,3 +9,8 @@ class OpenAIAPICallError(SystemException):
         super().__init__(
             f"OpenAI API call failed with error: {openai_error}: {openai_error_message}"
         )
+
+
+class OpenAIInvalidResponseFormatError(SystemException):
+    def __init__(self):
+        super().__init__("Non valid OpenAI API response format")

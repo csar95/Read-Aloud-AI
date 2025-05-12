@@ -56,7 +56,7 @@ class OpenAIAPIController:
     def __init__(
         self,
         openai_client: OpenAI,
-        model_name: str = "gpt-4o-2024-08-06",
+        model_name: str,
     ) -> None:
         self.model_name = model_name
         self.client = openai_client

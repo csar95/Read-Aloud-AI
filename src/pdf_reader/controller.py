@@ -76,7 +76,7 @@ class PDFReaderController:
             pdf_text = ""
             for page_id in pages or range(len(self.document)):
                 # It seems that the package "pypdfium2" separates lines by "\r\n" by default
-                page_text = self.document[page_id].get_textpage().get_text_range()
+                page_text = self.document[page_id].get_textpage().get_text_bounded()
 
                 # Split the text into lines removing the ones contained in the header and footer
                 page_lines = [
