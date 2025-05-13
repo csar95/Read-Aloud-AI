@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "read-aloud-ai"
+version = "0.1.0"
+description = "Read-Aloud-AI environment."
+authors = [
+    "Cesar Gutierrez <cesarguti47@gmail.com>",
+]
+readme = "README.md"
+package-mode = false
+
+[project.urls]
+repository = "https://github.com/csar95/Read-Aloud-AI"
+
+[virtualenvs]
+create = true
+in-project = true
+
+[tool.poetry.dependencies]
+python = "~3.10"
+ipykernel = "*"
+ipywidgets = "*"
+kokoro = "==0.9.4"
+openai = "==1.78.1"
+pypdfium2 = "==4.30.1"
+PyMuPDF = "==1.25.5"
+pillow = "==11.2.1"
