@@ -1,4 +1,4 @@
-from typing import List, Optional, Type
+from typing import Optional, Type
 
 from pydantic import BaseModel, model_validator
 
@@ -8,7 +8,6 @@ from src.io_schemas.output_schemas import FormattedPageText
 class Prompt(BaseModel):
     system_msg: str
     user_msg: str
-    input_variables: List
     output_regex: Optional[str] = None
     output_json: Type[BaseModel] = None
     output_text: Optional[bool] = None
@@ -42,7 +41,6 @@ Use these inputs to maintain continuity across page boundaries without repeating
 
 **Output Format:**
 - Ensure the text reads smoothly as continuous speech.
-- Separate **each paragraph with a single line break (`\n`)**, to allow for pauses in TTS playback.
 - Exclude any content that doesn’t translate well to spoken language (e.g., code blocks, tables).
 - Return only the cleaned-up text, without any additional comments or explanations, in a JSON object with a single key "text".
 
@@ -56,10 +54,9 @@ Use these inputs to maintain continuity across page boundaries without repeating
     - Merge broken lines into full paragraphs.
     - Remove unnecessary line breaks, whitespace, and layout issues.
     - Preserve the logical order of the content.
-    - Separate paragraphs using a **single line break** (`\n`).
 
 3. **Omit Non-Speech-Friendly Elements**  
-    - Remove code snippets, formulas, tables, page numbers, headers/footers, and similar noise.  
+    - Remove code snippets, formulas, tables, page numbers, headers/footers, references to links and similar noise.  
     - Skip purely visual layout markers.
 
 4. **Rewrite for Natural Transitions**
@@ -68,14 +65,18 @@ Use these inputs to maintain continuity across page boundaries without repeating
         - Convert bullet lists into smooth, connected prose, or spoken-style enumeration: *"There are three main factors to consider. First... Second... Finally..."*
     - Use tone and phrasing appropriate for **spoken narration**, not rigid formatting.
 
-5. **Avoid Hallucinations**  
+5. **Mark Natural Pauses with {silence_keyword}**  
+    - Insert the tag `{silence_keyword}` (in square brackets) wherever a longer pause would sound natural in spoken language.
+        - Use this at the **start of a new section**, after significant shifts in topic, or between clearly separated ideas.
+        - Avoid overusing it—only include `{silence_keyword}` where a human narrator would clearly insert a longer pause for effect or clarity.
+
+6. **Avoid Hallucinations**  
     - Do NOT add or invent content that is not present in the original text.
 
-6. **Prioritize Flow and Clarity**  
+7. **Prioritize Flow and Clarity**  
     - Use complete sentences and natural connectors.
-    - Use line breaks to indicate paragraph breaks, creating natural pauses for TTS.
 
-Your ultimate goal is to transform messy, machine-extracted PDF text into **engaging, natural, and accurate narration-ready prose**, with clear paragraph boundaries for optimal TTS delivery.
+Your ultimate goal is to transform messy, machine-extracted PDF text into **engaging, natural, and accurate narration-ready prose**, with appropriate pacing cues for TTS.
 """,
     user_msg="""
 previous_fragment:
@@ -97,6 +98,5 @@ Please, format the **current_page** into smooth, narration-ready Markdown text, 
 
 **Output only the newly formatted portion** (do not repeat the previous_fragment).
 """,
-    input_variables=["current_page", "previous_fragment", "next_preview"],
     output_json=FormattedPageText,
 )
