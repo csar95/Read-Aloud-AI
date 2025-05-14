@@ -42,6 +42,7 @@ Use these inputs to maintain continuity across page boundaries without repeating
 
 **Output Format:**
 - Ensure the text reads smoothly as continuous speech.
+- Separate **each paragraph with a single line break (`\n`)**, to allow for pauses in TTS playback.
 - Exclude any content that doesn’t translate well to spoken language (e.g., code blocks, tables).
 - Return only the cleaned-up text, without any additional comments or explanations, in a JSON object with a single key "text".
 
@@ -55,6 +56,7 @@ Use these inputs to maintain continuity across page boundaries without repeating
     - Merge broken lines into full paragraphs.
     - Remove unnecessary line breaks, whitespace, and layout issues.
     - Preserve the logical order of the content.
+    - Separate paragraphs using a **single line break** (`\n`).
 
 3. **Omit Non-Speech-Friendly Elements**  
     - Remove code snippets, formulas, tables, page numbers, headers/footers, and similar noise.  
@@ -71,8 +73,9 @@ Use these inputs to maintain continuity across page boundaries without repeating
 
 6. **Prioritize Flow and Clarity**  
     - Use complete sentences and natural connectors.
+    - Use line breaks to indicate paragraph breaks, creating natural pauses for TTS.
 
-Your ultimate goal is to transform messy, machine-extracted PDF text into **engaging, natural, and accurate narration-ready prose**.
+Your ultimate goal is to transform messy, machine-extracted PDF text into **engaging, natural, and accurate narration-ready prose**, with clear paragraph boundaries for optimal TTS delivery.
 """,
     user_msg="""
 previous_fragment:
