@@ -1,3 +1,6 @@
+from src.utils.constants import SUPPORTED_FORMATS
+
+
 class SystemException(Exception):
     pass
 
@@ -14,3 +17,10 @@ class OpenAIAPICallError(SystemException):
 class OpenAIInvalidResponseFormatError(SystemException):
     def __init__(self):
         super().__init__("Non valid OpenAI API response format")
+
+
+class UnsupportedFileFormatError(SystemException):
+    def __init__(self):
+        super().__init__(
+            f'Unsupported media type. Only {", ".join(SUPPORTED_FORMATS)} files are supported.'
+        )
