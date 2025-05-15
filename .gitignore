@@ -181,3 +181,6 @@ models/
 
 # Audio files
 *.wav
+
+# PDF files
+*.pdf
