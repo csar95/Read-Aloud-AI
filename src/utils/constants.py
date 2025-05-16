@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Annotated
 
 
@@ -7,9 +8,11 @@ DURATION_OF_ERROR_MESSAGE: Annotated[
 GEMINI_BASE_URL: Annotated[
     str, "Base URL for accessing the Gemini generative language API"
 ] = "https://generativelanguage.googleapis.com/v1beta/openai/"
-TTS_MODEL_REPO_ID: Annotated[
-    str, "Repository ID for the text-to-speech (TTS) model"
-] = "hexgrad/Kokoro-82M"
+OPENAI_API_KWARGS: Annotated[
+    dict[str, str], "Keyword arguments for the OpenAI API client to be used when formatting the document text for TTS"
+] = {
+    "temperature": 0.0,
+}
 SILENCE_KEYWORD: Annotated[
     str, "Keyword used to represent a pause when processing audio"
 ] = "[SILENCE]"
@@ -21,8 +24,8 @@ SUPPORTED_FORMATS: Annotated[
 ] = [
     "application/pdf"
 ]
-OPENAI_API_KWARGS: Annotated[
-    dict[str, str], "Keyword arguments for the OpenAI API client to be used when formatting the document text for TTS"
-] = {
-    "temperature": 0.0,
-}
+TTS_MODEL_LOCAL_DIR = Path(__file__).parents[2] / "models/kokoro"
+TTS_MODEL_PATH = TTS_MODEL_LOCAL_DIR / "kokoro-v1_0.pth"
+TTS_MODEL_REPO_ID: Annotated[
+    str, "Repository ID for the text-to-speech (TTS) model"
+] = "hexgrad/Kokoro-82M"

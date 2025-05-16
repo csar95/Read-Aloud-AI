@@ -2,8 +2,10 @@ from io import BytesIO
 import json
 from typing import List
 
+from kokoro import KModel, KPipeline
 import gradio as gr
 import magic
+import numpy as np
 from openai import OpenAI
 from openai._exceptions import OpenAIError
 import pypdfium2 as pdfium
@@ -16,8 +18,11 @@ from src.utils.constants import (
     DURATION_OF_ERROR_MESSAGE,
     GEMINI_BASE_URL,
     OPENAI_API_KWARGS,
+    SAMPLE_RATE,
     SILENCE_KEYWORD,
     SUPPORTED_FORMATS,
+    TTS_MODEL_PATH,
+    TTS_MODEL_REPO_ID,
 )
 from src.utils.custom_exceptions import (
     OpenAIInvalidResponseFormatError,
@@ -50,7 +55,7 @@ def setup_api_client(api_key: str, model_id: str) -> OpenAIAPIController:
     """
     if not api_key:
         raise OpenAIError("API key is required.")
-    
+
     try:
         client = OpenAI(api_key=api_key, base_url=GEMINI_BASE_URL)
         print(client.models.list().to_dict())
@@ -202,9 +207,96 @@ def format_text_for_tts(
     return formatted_document_text
 
 
+def chunk_text(text: str, max_words: int = 50) -> List[str]:
+    """
+    Splits the text into chunks formed by sentences, ensuring that each chunk does not
+    exceed the specified number of words.
+
+    Parameters
+    ----------
+    text : str
+        The text to be split into chunks.
+    max_words : int
+        The maximum number of words allowed in each chunk.
+
+    Returns
+    -------
+    List[str]
+        A list of text chunks, each containing a maximum of `max_words` words.
+    """
+    small_chunks_for_tts = []
+    current_chunk = ""
+    # Split the text into sentences using ". " as a delimiter and filter out empty strings
+    for sentence in filter(lambda x: x != "", map(str.strip, text.split(". "))):
+
+        current_chunk_words = current_chunk.split()
+        sentence_words = sentence.split()
+
+        if (
+            current_chunk != ""
+            and len(current_chunk_words) + len(sentence_words) > max_words
+        ):
+            small_chunks_for_tts.append(current_chunk.rstrip())
+            current_chunk = ""
+
+        current_chunk += sentence + (". " if sentence[-1] != "." else "")
+
+    if current_chunk:
+        small_chunks_for_tts.append(current_chunk.rstrip())
+
+    return small_chunks_for_tts
+
+
+def text_to_speech(
+    text: str, voice: str, speed: float, duration_of_pauses: float
+) -> np.ndarray:
+    tts_model = KModel(repo_id=TTS_MODEL_REPO_ID, model=TTS_MODEL_PATH.as_posix())
+    pipeline = KPipeline(
+        lang_code="a",
+        repo_id=TTS_MODEL_REPO_ID,
+        model=tts_model,
+        device="cpu",  # FIXME: GET DEVICE DEPENDING ON GPU AVAILABILITY
+    )
+
+    audio_chunks = []
+    silence = np.zeros(int(SAMPLE_RATE * duration_of_pauses), dtype=np.float32)
+
+    text_split_by_pauses = filter(
+        lambda x: x != "", map(str.strip, text.split(SILENCE_KEYWORD))
+    )
+    for text_chunk_id, text_between_pauses in enumerate(text_split_by_pauses):
+
+        audios_from_text_between_pauses = []
+        text_chunks = chunk_text(text=text_between_pauses)
+        for small_text_chunk in text_chunks:
+
+            audio_generator = pipeline(text=small_text_chunk, voice=voice, speed=speed)
+            for graphemes, phonemes, audio_chunk in audio_generator:
+                print(
+                    f"++++ Processing audio chunk\n"
+                    f" Number of words: {len(graphemes.split())}\n"
+                    f" Graphemes: {graphemes}\n"
+                    f" Phonemes: {phonemes}"
+                )
+                audios_from_text_between_pauses.append(audio_chunk)
+
+        audios_from_text_between_pauses = np.concatenate(
+            audios_from_text_between_pauses
+        )
+        if text_chunk_id > 0:
+            audios_from_text_between_pauses = np.concatenate(
+                [silence, audios_from_text_between_pauses]
+            )
+
+        audio_chunks.append(audios_from_text_between_pauses)
+
+    audio = np.concatenate(audio_chunks)
+    return audio
+
+
 def generate_podcast_from_file(
     file, voice, speed, duration_of_pauses, gemini_api_key, gemini_model_id
-):
+) -> np.ndarray:
     try:
         openai_api_ctrl = setup_api_client(
             api_key=gemini_api_key, model_id=gemini_model_id
@@ -214,13 +306,22 @@ def generate_podcast_from_file(
         file_format = get_file_format(file=byte_stream)
         assert file_format in SUPPORTED_FORMATS, str(UnsupportedFileFormatError())
 
-        text_from_pages = extract_text_from_pdf(pdf_file=byte_stream, pages=list(range(4)))  # FIXME: REMOVE HARDCODED PAGES
+        text_from_pages = extract_text_from_pdf(
+            pdf_file=byte_stream, pages=list(range(4))
+        )  # FIXME: REMOVE HARDCODED PAGES
 
         formatted_text = format_text_for_tts(
             openai_api_controller=openai_api_ctrl, text_chunks=text_from_pages
         )
 
-        # TODO: PASS THE FORMATTED TEXT TO THE TTS MODEL
+        audio = text_to_speech(
+            text=formatted_text,
+            voice=voice,
+            speed=speed,
+            duration_of_pauses=duration_of_pauses,
+        )
+
+        return SAMPLE_RATE, audio
 
     except OpenAIError as e:
         print(f"ERROR: {e}")
