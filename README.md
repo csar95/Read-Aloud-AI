@@ -3,7 +3,6 @@ title: Read-Aloud-AI
 emoji: 🎙️️
 sdk: gradio
 sdk_version: 5.29.1
-python_version: 3.10
 app_file: app.py
 suggested_hardware: cpu-basic
 short_description: Turn PDFs into podcasts
