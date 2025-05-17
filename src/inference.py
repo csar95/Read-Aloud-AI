@@ -11,6 +11,7 @@ import numpy as np
 from openai import OpenAI
 from openai._exceptions import OpenAIError
 import pypdfium2 as pdfium
+import torch
 
 from src.io_schemas.output_schemas import FormattedPageText
 from src.io_schemas.prompts import FORMAT_TEXT_FOR_TTS
@@ -251,13 +252,14 @@ def chunk_text(text: str, max_words: int = 50) -> List[str]:
 def text_to_speech(
     text: str, voice: str, speed: float, duration_of_pauses: float
 ) -> np.ndarray:
+    print(f"+++++++++++++ {torch.cuda.is_available()} +++++++++++++")
     tts_model_path = str(next(Path(HF_HUB_CACHE).rglob("kokoro-v1_0.pth")))
     tts_model = KModel(repo_id=TTS_MODEL_REPO_ID, model=tts_model_path)
     pipeline = KPipeline(
         lang_code="a",
         repo_id=TTS_MODEL_REPO_ID,
         model=tts_model,
-        device="cpu",  # FIXME: GET DEVICE DEPENDING ON GPU AVAILABILITY
+        device="cuda" if torch.cuda.is_available() else "cpu",
     )
 
     audio_chunks = []
