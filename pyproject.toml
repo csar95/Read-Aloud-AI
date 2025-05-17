@@ -3,7 +3,7 @@ name = "read-aloud-ai"
 version = "0.1.0"
 description = "Read-Aloud-AI environment."
 authors = [
-    "Cesar Gutierrez <cesarguti47@gmail.com>",
+    "Cesar Gutierrez",
 ]
 readme = "README.md"
 package-mode = false
