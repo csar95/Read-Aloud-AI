@@ -712,6 +712,20 @@ all = ["email-validator (>=2.0.0)", "fastapi-cli[standard] (>=0.0.5)", "httpx (>
 standard = ["email-validator (>=2.0.0)", "fastapi-cli[standard] (>=0.0.5)", "httpx (>=0.23.0)", "jinja2 (>=3.1.5)", "python-multipart (>=0.0.18)", "uvicorn[standard] (>=0.12.0)"]
 
 [[package]]
+name = "fastjsonschema"
+version = "2.21.1"
+description = "Fastest Python implementation of JSON schema"
+optional = false
+python-versions = "*"
+files = [
+    {file = "fastjsonschema-2.21.1-py3-none-any.whl", hash = "sha256:c9e5b7e908310918cf494a434eeb31384dd84a98b57a30bcb1f535015b554667"},
+    {file = "fastjsonschema-2.21.1.tar.gz", hash = "sha256:794d4f0a58f848961ba16af7b9c85a3e88cd360df008c59aac6fc5ae9323b5d4"},
+]
+
+[package.extras]
+devel = ["colorama", "json-spec", "jsonschema", "pylint", "pytest", "pytest-benchmark", "pytest-cache", "validictory"]
+
+[[package]]
 name = "ffmpy"
 version = "0.5.0"
 description = "A simple Python wrapper for FFmpeg"
@@ -1666,6 +1680,41 @@ files = [
     {file = "murmurhash-1.0.12-cp39-cp39-win_amd64.whl", hash = "sha256:d1ad46f78de3ce3f3a8e8c2f87af32bcede893f047c87389c7325bb1f3f46b47"},
     {file = "murmurhash-1.0.12.tar.gz", hash = "sha256:467b7ee31c1f79f46d00436a1957fc52a0e5801369dd2f30eb7655f380735b5f"},
 ]
+
+[[package]]
+name = "nbformat"
+version = "5.10.4"
+description = "The Jupyter Notebook format"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "nbformat-5.10.4-py3-none-any.whl", hash = "sha256:3b48d6c8fbca4b299bf3982ea7db1af21580e4fec269ad087b9e81588891200b"},
+    {file = "nbformat-5.10.4.tar.gz", hash = "sha256:322168b14f937a5d11362988ecac2a4952d3d8e3a2cbeb2319584631226d5b3a"},
+]
+
+[package.dependencies]
+fastjsonschema = ">=2.15"
+jsonschema = ">=2.6"
+jupyter-core = ">=4.12,<5.0.dev0 || >=5.1.dev0"
+traitlets = ">=5.1"
+
+[package.extras]
+docs = ["myst-parser", "pydata-sphinx-theme", "sphinx", "sphinxcontrib-github-alt", "sphinxcontrib-spelling"]
+test = ["pep440", "pre-commit", "pytest", "testpath"]
+
+[[package]]
+name = "nbstripout"
+version = "0.8.1"
+description = "Strips outputs from Jupyter and IPython notebooks"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "nbstripout-0.8.1-py2.py3-none-any.whl", hash = "sha256:79a8c8da488d98c54c112fa87185045f0271a97d84f1d46918d6a3ee561b30e7"},
+    {file = "nbstripout-0.8.1.tar.gz", hash = "sha256:eaac8b6b4e729e8dfe1e5df2c0f8ba44abc5a17a65448f0480141f80be230bb1"},
+]
+
+[package.dependencies]
+nbformat = "*"
 
 [[package]]
 name = "nest-asyncio"
@@ -4239,4 +4288,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "~3.10"
-content-hash = "e54784fa974a2188c96f1f4add322b8f026796b82318dfd62eb61bb345a0f33f"
+content-hash = "f334e71d1532b37257b10e426f9c075a49ece6975eccf19e3da4b9baa68e023d"
