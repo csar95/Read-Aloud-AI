@@ -1,7 +1,7 @@
 from pathlib import Path
 import sys
 
-project_root = Path(__file__).resolve().parent.parent
+project_root = Path(__file__).resolve().parent
 sys.path.append(str(project_root))
 
 import gradio as gr
