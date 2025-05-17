@@ -1,4 +1,4 @@
-from pathlib import Path
+import os
 from typing import Annotated
 
 
@@ -24,8 +24,6 @@ SUPPORTED_FORMATS: Annotated[
 ] = [
     "application/pdf"
 ]
-TTS_MODEL_LOCAL_DIR = Path(__file__).parents[2] / "models/kokoro"
-TTS_MODEL_PATH = TTS_MODEL_LOCAL_DIR / "kokoro-v1_0.pth"
 TTS_MODEL_REPO_ID: Annotated[
     str, "Repository ID for the text-to-speech (TTS) model"
 ] = "hexgrad/Kokoro-82M"

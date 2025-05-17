@@ -8,11 +8,8 @@ import gradio as gr
 from huggingface_hub import hf_hub_download
 from kokoro import KModel
 
-from src.utils.constants import (
-    TTS_MODEL_LOCAL_DIR,
-    TTS_MODEL_REPO_ID,
-)
 from src.inference import generate_podcast_from_file
+from src.utils.constants import TTS_MODEL_REPO_ID
 
 
 demo = gr.Interface(
@@ -65,12 +62,10 @@ demo = gr.Interface(
 if __name__ == "__main__":
     print("Downloading TTS model from Hugging Face Hub...")
     
-    TTS_MODEL_LOCAL_DIR.mkdir(parents=True, exist_ok=True)
     tts_model_path = hf_hub_download(
         repo_id=TTS_MODEL_REPO_ID,
         filename=KModel.MODEL_NAMES[TTS_MODEL_REPO_ID],
-        local_dir=TTS_MODEL_LOCAL_DIR,
         force_download=False,  # Set to True to force redownload even if the file exists
     )
 
-    demo.launch(debug=True)
+    demo.launch()

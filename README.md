@@ -1,3 +1,21 @@
+---
+title: Read-Aloud-AI
+emoji: 🎙️️
+sdk: gradio
+python_version: 3.10
+sdk_version: 5.29.1
+app_file: app.py
+suggested_hardware: cpu-basic
+short_description: Turn PDFs into podcasts
+models:
+  - hexgrad/Kokoro-82M
+tags:
+  - Text-to-Speech
+pinned: true
+preload_from_hub:
+  - hexgrad/Kokoro-82M kokoro-v1_0.pth
+---
+
 # Read-Aloud-AI
 
 Turn any document into a podcast using the power of state-of-the-art Text-to-Speech (TTS) models.

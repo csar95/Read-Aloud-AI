@@ -1,7 +1,9 @@
 from io import BytesIO
 import json
+from pathlib import Path
 from typing import List
 
+from huggingface_hub.constants import HF_HUB_CACHE
 from kokoro import KModel, KPipeline
 import gradio as gr
 import magic
@@ -21,7 +23,6 @@ from src.utils.constants import (
     SAMPLE_RATE,
     SILENCE_KEYWORD,
     SUPPORTED_FORMATS,
-    TTS_MODEL_PATH,
     TTS_MODEL_REPO_ID,
 )
 from src.utils.custom_exceptions import (
@@ -250,7 +251,8 @@ def chunk_text(text: str, max_words: int = 50) -> List[str]:
 def text_to_speech(
     text: str, voice: str, speed: float, duration_of_pauses: float
 ) -> np.ndarray:
-    tts_model = KModel(repo_id=TTS_MODEL_REPO_ID, model=TTS_MODEL_PATH.as_posix())
+    tts_model_path = str(next(Path(HF_HUB_CACHE).rglob("kokoro-v1_0.pth")))
+    tts_model = KModel(repo_id=TTS_MODEL_REPO_ID, model=tts_model_path)
     pipeline = KPipeline(
         lang_code="a",
         repo_id=TTS_MODEL_REPO_ID,
