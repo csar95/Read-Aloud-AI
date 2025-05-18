@@ -1,22 +1,19 @@
 from io import BytesIO
 import json
-from pathlib import Path
 from typing import List
 
-from huggingface_hub.constants import HF_HUB_CACHE
-from kokoro import KModel, KPipeline
 import gradio as gr
 import magic
 import numpy as np
 from openai import OpenAI
 from openai._exceptions import OpenAIError
 import pypdfium2 as pdfium
-import torch
 
 from src.io_schemas.output_schemas import FormattedPageText
 from src.io_schemas.prompts import FORMAT_TEXT_FOR_TTS
 from src.openai_api_utils.controller import OpenAIAPIController
 from src.pdf_reader.helpers import detect_header_footer
+from src.tts.controller import TTSModelClient
 from src.utils.constants import (
     DURATION_OF_ERROR_MESSAGE,
     GEMINI_BASE_URL,
@@ -24,7 +21,6 @@ from src.utils.constants import (
     SAMPLE_RATE,
     SILENCE_KEYWORD,
     SUPPORTED_FORMATS,
-    TTS_MODEL_REPO_ID,
 )
 from src.utils.custom_exceptions import (
     OpenAIInvalidResponseFormatError,
@@ -103,6 +99,11 @@ def extract_text_from_pdf(pdf_file: BytesIO, pages: List[int] = None) -> List[st
     pages : list of int, optional
         List of page numbers (0-indexed) to extract text from. If None, all pages will
         be processed. Default is None.
+
+    Raises
+    ------
+    IndexError
+        If the specified page number is out of range.
 
     Returns
     -------
@@ -209,59 +210,36 @@ def format_text_for_tts(
     return formatted_document_text
 
 
-def chunk_text(text: str, max_words: int = 50) -> List[str]:
+def convert_text_to_speech(
+    client: TTSModelClient,
+    text: str,
+    voice: str,
+    speed: float,
+    duration_of_pauses: float,
+) -> np.ndarray:
     """
-    Splits the text into chunks formed by sentences, ensuring that each chunk does not
-    exceed the specified number of words.
+    Converts text to speech using the TTS model. To do so, it splits the text into
+    chunks based on the "silence" keyword, and generates audio for each chunk. This is
+    done to add pauses in the speech so it sounds more natural.
 
     Parameters
     ----------
+    client : TTSModelClient
+        The TTS model client to use for generating audio.
     text : str
-        The text to be split into chunks.
-    max_words : int
-        The maximum number of words allowed in each chunk.
+        The text to be read by the TTS model.
+    voice : str
+        The voice to be used for TTS.
+    speed : float
+        The speed of speech.
+    duration_of_pauses : float
+        The duration of pauses in the speech (in seconds).
 
     Returns
     -------
-    List[str]
-        A list of text chunks, each containing a maximum of `max_words` words.
+    np.ndarray
+        The generated audio as a NumPy array.
     """
-    small_chunks_for_tts = []
-    current_chunk = ""
-    # Split the text into sentences using ". " as a delimiter and filter out empty strings
-    for sentence in filter(lambda x: x != "", map(str.strip, text.split(". "))):
-
-        current_chunk_words = current_chunk.split()
-        sentence_words = sentence.split()
-
-        if (
-            current_chunk != ""
-            and len(current_chunk_words) + len(sentence_words) > max_words
-        ):
-            small_chunks_for_tts.append(current_chunk.rstrip())
-            current_chunk = ""
-
-        current_chunk += sentence + (". " if sentence[-1] != "." else "")
-
-    if current_chunk:
-        small_chunks_for_tts.append(current_chunk.rstrip())
-
-    return small_chunks_for_tts
-
-
-def text_to_speech(
-    text: str, voice: str, speed: float, duration_of_pauses: float
-) -> np.ndarray:
-    print(f"+++++++++++++ {torch.cuda.is_available()} +++++++++++++")
-    tts_model_path = str(next(Path(HF_HUB_CACHE).rglob("kokoro-v1_0.pth")))
-    tts_model = KModel(repo_id=TTS_MODEL_REPO_ID, model=tts_model_path)
-    pipeline = KPipeline(
-        lang_code="a",
-        repo_id=TTS_MODEL_REPO_ID,
-        model=tts_model,
-        device="cuda" if torch.cuda.is_available() else "cpu",
-    )
-
     audio_chunks = []
     silence = np.zeros(int(SAMPLE_RATE * duration_of_pauses), dtype=np.float32)
 
@@ -270,23 +248,10 @@ def text_to_speech(
     )
     for text_chunk_id, text_between_pauses in enumerate(text_split_by_pauses):
 
-        audios_from_text_between_pauses = []
-        text_chunks = chunk_text(text=text_between_pauses)
-        for small_text_chunk in text_chunks:
-
-            audio_generator = pipeline(text=small_text_chunk, voice=voice, speed=speed)
-            for graphemes, phonemes, audio_chunk in audio_generator:
-                print(
-                    f"++++ Processing audio chunk\n"
-                    f" Number of words: {len(graphemes.split())}\n"
-                    f" Graphemes: {graphemes}\n"
-                    f" Phonemes: {phonemes}"
-                )
-                audios_from_text_between_pauses.append(audio_chunk)
-
-        audios_from_text_between_pauses = np.concatenate(
-            audios_from_text_between_pauses
+        audios_from_text_between_pauses = client.text_to_speech(
+            text=text_between_pauses, voice=voice, speed=speed
         )
+
         if text_chunk_id > 0:
             audios_from_text_between_pauses = np.concatenate(
                 [silence, audios_from_text_between_pauses]
@@ -298,27 +263,85 @@ def text_to_speech(
     return audio
 
 
+def validate_input_pages(pages: str) -> List[int]:
+    """
+    Validate the input pages string and convert it to a 0-indexed list of integers.
+
+    Notes
+    -----
+    The input can be a single page number (e.g., "1"), a list of pages (e.g., "1,2,3"),
+    or a range of pages (e.g., "1-3").
+
+    Parameters
+    ----------
+    pages : str
+        The input string representing the pages to be processed.
+
+    Raises
+    ------
+    ValueError
+        If input cannot be converted to a list of integers.
+    Exception
+        If the input format is invalid or if both a list and a range of pages are
+        provided.
+
+    Returns
+    -------
+    list of int
+        A list of integers representing the page numbers (0-indexed) to be processed.
+    """
+    pages = pages.strip()
+    if not pages:
+        return None
+    elif "," in pages and "-" in pages:
+        raise Exception("Cannot mix comma-separated and range formats.")
+    elif "," in pages:
+        page_numbers = [int(x) for x in filter(lambda x: x != "", map(str.strip, pages.split(",")))]
+        if any(p <= 0 for p in page_numbers):
+            raise Exception("Page numbers must be positive integers.")
+        return [p - 1 for p in page_numbers]
+    elif "-" in pages:
+        start, end = map(int, filter(lambda x: x != "", map(str.strip, pages.split("-"))))
+        if start <= 0 or end <= 0:
+            raise Exception("Page numbers must be positive integers.")
+        if start >= end:
+            raise Exception("Start page cannot be greater than or equal to end page.")
+        return list(range(start - 1, end))
+    else:
+        page_number = int(pages)
+        if page_number <= 0:
+            raise Exception("Page number must be a positive integer.")
+        return [page_number - 1]
+
+
 def generate_podcast_from_file(
-    file, voice, speed, duration_of_pauses, gemini_api_key, gemini_model_id
+    file, pages, voice, speed, duration_of_pauses, gemini_api_key, gemini_model_id
 ) -> np.ndarray:
     try:
+        # Setup OpenAI API client
         openai_api_ctrl = setup_api_client(
             api_key=gemini_api_key, model_id=gemini_model_id
         )
 
+        # Setup TTS model
+        tts_client = TTSModelClient()
+
+        # Check if file format is supported
         byte_stream = BytesIO(file)
         file_format = get_file_format(file=byte_stream)
         assert file_format in SUPPORTED_FORMATS, str(UnsupportedFileFormatError())
 
-        text_from_pages = extract_text_from_pdf(
-            pdf_file=byte_stream, pages=list(range(4))
-        )  # FIXME: REMOVE HARDCODED PAGES
+        # Validate input pages
+        pages = validate_input_pages(pages=pages)
+
+        text_from_pages = extract_text_from_pdf(pdf_file=byte_stream, pages=pages)
 
         formatted_text = format_text_for_tts(
             openai_api_controller=openai_api_ctrl, text_chunks=text_from_pages
         )
 
-        audio = text_to_speech(
+        audio = convert_text_to_speech(
+            client=tts_client,
             text=formatted_text,
             voice=voice,
             speed=speed,

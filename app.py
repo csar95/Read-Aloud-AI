@@ -21,6 +21,13 @@ demo = gr.Interface(
             file_types=[".pdf"],
             type="binary",
         ),
+        gr.Textbox(
+            label="Pages to convert",
+            placeholder="2 or 1,2,3 or 1-3",
+            type="text",
+            lines=1,
+            max_lines=None,
+        ),
         gr.Dropdown(
             choices=["am_liam", "am_puck"],  # FIXME: TAKE CHOICES FROM KOKORO
             value="am_liam",
