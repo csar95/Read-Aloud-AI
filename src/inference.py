@@ -318,6 +318,9 @@ def generate_podcast_from_file(
     file, pages, voice, speed, duration_of_pauses, gemini_api_key, gemini_model_id
 ) -> np.ndarray:
     try:
+        # Validate input pages
+        pages = validate_input_pages(pages=pages)
+        
         # Setup OpenAI API client
         openai_api_ctrl = setup_api_client(
             api_key=gemini_api_key, model_id=gemini_model_id
@@ -330,9 +333,6 @@ def generate_podcast_from_file(
         byte_stream = BytesIO(file)
         file_format = get_file_format(file=byte_stream)
         assert file_format in SUPPORTED_FORMATS, str(UnsupportedFileFormatError())
-
-        # Validate input pages
-        pages = validate_input_pages(pages=pages)
 
         text_from_pages = extract_text_from_pdf(pdf_file=byte_stream, pages=pages)
 
