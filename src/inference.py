@@ -184,6 +184,7 @@ def format_text_for_tts(
         }
 
         # Send the request to the OpenAI/Gemini API
+        # FIXME: ADD RETRY FUNCTIONALITY AFTER 1 MIN WHEN RATE LIMIT ERROR
         chat_completion, elapsed_time_s, retries_taken = (
             openai_api_controller.send_request(
                 prompt=prompt,
