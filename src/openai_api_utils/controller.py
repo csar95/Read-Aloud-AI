@@ -51,7 +51,6 @@ def _image_to_base64_data_uri(image: Image.Image) -> str:
     return f"data:image/jpeg;base64,{base64_data}"
 
 
-
 class OpenAIAPIController:
     def __init__(
         self,

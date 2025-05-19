@@ -5,6 +5,11 @@ class SystemException(Exception):
     pass
 
 
+class FunctionCallTimeoutError(SystemException):
+    def __init__(self):
+        super().__init__("Function execution timed out.")
+
+
 class OpenAIAPICallError(SystemException):
     def __init__(self, openai_error: str, openai_error_message: str):
         self.openai_error = openai_error

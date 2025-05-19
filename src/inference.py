@@ -10,6 +10,7 @@ import pypdfium2 as pdfium
 
 from src.io_schemas.output_schemas import FormattedPageText
 from src.io_schemas.prompts import FORMAT_TEXT_FOR_TTS
+from src.openai_api_utils import attempt_function_call
 from src.openai_api_utils.controller import OpenAIAPIController
 from src.pdf_reader.helpers import detect_header_footer
 from src.tts.controller import TTSModelClient
@@ -159,15 +160,14 @@ def format_text_for_tts(
         }
 
         # Send the request to the OpenAI/Gemini API
-        # FIXME: ADD RETRY FUNCTIONALITY AFTER 1 MIN WHEN RATE LIMIT ERROR
-        chat_completion, elapsed_time_s, retries_taken = (
-            openai_api_controller.send_request(
+        (chat_completion, _, _), num_attempts, elapsed_time_s = (
+            attempt_function_call(
+                openai_api_controller.send_request,
                 prompt=prompt,
                 response_format=FORMAT_TEXT_FOR_TTS.output_json,
                 **OPENAI_API_KWARGS,
             )
         )
-        num_attempts = retries_taken + 1
         print(
             f"Received response from OpenAI API. Response: {chat_completion}\n"
             f"num_attempts: {num_attempts}\n"
