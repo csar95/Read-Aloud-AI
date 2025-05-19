@@ -1,9 +1,8 @@
 from io import BytesIO
 import json
-from typing import List
+from typing import List, Tuple
 
 import gradio as gr
-import magic
 import numpy as np
 from openai import OpenAI
 from openai._exceptions import OpenAIError
@@ -20,11 +19,11 @@ from src.utils.constants import (
     OPENAI_API_KWARGS,
     SAMPLE_RATE,
     SILENCE_KEYWORD,
-    SUPPORTED_FORMATS,
 )
-from src.utils.custom_exceptions import (
-    OpenAIInvalidResponseFormatError,
-    UnsupportedFileFormatError,
+from src.utils.custom_exceptions import OpenAIInvalidResponseFormatError
+from src.utils.input_validation import (
+    validate_file_format,
+    validate_input_pages,
 )
 
 
@@ -62,30 +61,6 @@ def setup_api_client(api_key: str, model_id: str) -> OpenAIAPIController:
 
     openai_api_ctrl = OpenAIAPIController(openai_client=client, model_name=model_id)
     return openai_api_ctrl
-
-
-def get_file_format(file: BytesIO) -> str:
-    """
-    Get the file format of the given file.
-
-    Parameters
-    ----------
-    file: io.BytesIO
-        File to get the format from.
-
-    Returns
-    -------
-    str
-        File format.
-    """
-    try:
-        content = file.read()
-        mime = magic.Magic(mime=True)
-        file_type = mime.from_buffer(content)
-    finally:
-        file.seek(0)
-
-    return file_type
 
 
 def extract_text_from_pdf(pdf_file: BytesIO, pages: List[int] = None) -> List[str]:
@@ -264,77 +239,25 @@ def convert_text_to_speech(
     return audio
 
 
-def validate_input_pages(pages: str) -> List[int]:
-    """
-    Validate the input pages string and convert it to a 0-indexed list of integers.
-
-    Notes
-    -----
-    The input can be a single page number (e.g., "1"), a list of pages (e.g., "1,2,3"),
-    or a range of pages (e.g., "1-3").
-
-    Parameters
-    ----------
-    pages : str
-        The input string representing the pages to be processed.
-
-    Raises
-    ------
-    ValueError
-        If input cannot be converted to a list of integers.
-    Exception
-        If the input format is invalid or if both a list and a range of pages are
-        provided.
-
-    Returns
-    -------
-    list of int
-        A list of integers representing the page numbers (0-indexed) to be processed.
-    """
-    pages = pages.strip()
-    if not pages:
-        return None
-    elif "," in pages and "-" in pages:
-        raise Exception("Cannot mix comma-separated and range formats.")
-    elif "," in pages:
-        page_numbers = [int(x) for x in filter(lambda x: x != "", map(str.strip, pages.split(",")))]
-        if any(p <= 0 for p in page_numbers):
-            raise Exception("Page numbers must be positive integers.")
-        return [p - 1 for p in page_numbers]
-    elif "-" in pages:
-        start, end = map(int, filter(lambda x: x != "", map(str.strip, pages.split("-"))))
-        if start <= 0 or end <= 0:
-            raise Exception("Page numbers must be positive integers.")
-        if start >= end:
-            raise Exception("Start page cannot be greater than or equal to end page.")
-        return list(range(start - 1, end))
-    else:
-        page_number = int(pages)
-        if page_number <= 0:
-            raise Exception("Page number must be a positive integer.")
-        return [page_number - 1]
-
-
 def generate_podcast_from_file(
     file, pages, voice, speed, duration_of_pauses, gemini_api_key, gemini_model_id
-) -> np.ndarray:
+) -> Tuple[int, np.ndarray]:
     try:
-        # Validate input pages
+        # VALIDATE INPUTS
         pages = validate_input_pages(pages=pages)
+
+        byte_stream = BytesIO(file)
+        validate_file_format(file=byte_stream)
         
-        # Setup OpenAI API client
+        # SETUP OPENAI/GEMINI API CLIENT
         openai_api_ctrl = setup_api_client(
             api_key=gemini_api_key, model_id=gemini_model_id
         )
 
-        # Setup TTS model
+        # SETUP TTS MODEL CLIENT
         tts_client = TTSModelClient()
 
-        # Check if file format is supported
-        byte_stream = BytesIO(file)
-        file_format = get_file_format(file=byte_stream)
-        assert file_format in SUPPORTED_FORMATS, str(UnsupportedFileFormatError())
-
+        # PROCESS PDF FILE
         text_from_pages = extract_text_from_pdf(pdf_file=byte_stream, pages=pages)
 
         formatted_text = format_text_for_tts(
