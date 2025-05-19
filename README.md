@@ -21,6 +21,26 @@ Turn any document into a podcast using the power of state-of-the-art Text-to-Spe
 
 This project takes written documents—like articles, reports, or notes—and transforms them into natural-sounding audio, making content easy to consume on the go.
 
+## How Does Read-Aloud-AI Work?
+
+The application converts PDF documents into podcast-style audio through the following main steps:
+
+1. **PDF file upload and validation**  
+  The user uploads a PDF file and selects the pages to convert. The system validates the file format and the specified pages.
+
+2. **Text extraction and cleaning**  
+  Text is extracted from the selected pages, with headers and footers automatically removed to ensure the content is clean and suitable for voice conversion.
+
+3. **Text formatting with LLM**  
+  The extracted text is sent to a language model (LLM, such as Gemini or GPT) to rewrite it in a more natural and voice-friendly format, inserting pauses where needed to enhance the listening experience.
+
+4. **Text-to-Speech (TTS) conversion**  
+  The formatted text is split into segments and converted into audio using an advanced TTS model. Configurable pauses are inserted between segments to simulate more natural speech.
+
+5. **Generation and delivery of the final audio**  
+  All audio segments are concatenated and delivered to the user as an audio file, ready to be listened to as a podcast.
+
+This workflow is implemented in the [`generate_podcast_from_file`](src/inference.py) function, which orchestrates the entire process: from validation and text extraction, through LLM formatting, to final audio synthesis and assembly.
 
 ## Running the App with Poetry
 
