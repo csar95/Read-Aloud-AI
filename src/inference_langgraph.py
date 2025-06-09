@@ -43,7 +43,7 @@ def generate_podcast_from_file(
 
         assistant.graph.invoke(
             input={
-                "file": BytesIO(file),
+                "file": file,
                 "input_pages": pages,
                 "pages_to_process": None,
                 "text_from_pages": None,
@@ -62,7 +62,8 @@ def generate_podcast_from_file(
         if error:
             raise Exception(error)
 
-        return SAMPLE_RATE, final_state["audio"]
+        audio = np.array(final_state["audio"], dtype=np.float32)
+        return SAMPLE_RATE, audio
 
     except OpenAIError as e:
         print(f"ERROR: {e}")
@@ -77,18 +78,19 @@ def generate_podcast_from_file(
 
 
 class ReadAloudAgentState(TypedDict):
-    """State for the ReadAloudAgent workflow.
+    """
+    State for the ReadAloudAgent workflow.
 
     Attributes
     ----------
-    file: BytesIO
+    file: bytes
         The uploaded file containing the text to be read aloud.
     input_pages: str
         A string representing the pages to be processed, which can be a single page
         number, a list of pages (e.g., "1,2,3"), or a range of pages (e.g., "1-3").
-    pages_to_process: List[int]
+    pages_to_process: List of int
         A list of integers representing the 0-indexed page numbers to be processed.
-    text_from_pages: List[str]
+    text_from_pages: list of strings
         A list of strings containing the extracted text from the specified pages of the
         PDF file, with header and footer lines removed.
     formatted_text: str
@@ -100,12 +102,12 @@ class ReadAloudAgentState(TypedDict):
         The speed of speech for the TTS model.
     duration_of_pauses: float
         The duration of pauses in the speech (in seconds) to make it sound more natural.
-    audio: np.ndarray
+    audio: list of float
         The generated audio containing the speech synthesized from the formatted text.
     error: str
         An error message if any error occurs during the workflow execution.
     """
-    file: BytesIO
+    file: bytes
     input_pages: str
     pages_to_process: List[int]
     text_from_pages: List[str]
@@ -113,7 +115,7 @@ class ReadAloudAgentState(TypedDict):
     voice: str
     speed: float
     duration_of_pauses: float
-    audio: np.ndarray
+    audio: List[float]
     error: str
 
 
@@ -139,18 +141,18 @@ class ReadAloudAssistant:
         workflow.add_edge(START, "validate_input_pages_node")
         workflow.add_conditional_edges(
             "validate_input_pages_node",
-            lambda state: state["error"] is not None,
+            lambda state: state["error"] is None,
             {True: "validate_file_format_node", False: END},
         )
         workflow.add_conditional_edges(
             "validate_file_format_node",
-            lambda state: state["error"] is not None,
+            lambda state: state["error"] is None,
             {True: "extract_text_from_pdf_node", False: END},
         )
         workflow.add_edge("extract_text_from_pdf_node", "format_text_for_tts_node")
         workflow.add_conditional_edges(
             "format_text_for_tts_node",
-            lambda state: state["error"] is not None,
+            lambda state: state["error"] is None,
             {True: "convert_text_to_speech_node", False: END},
         )
         workflow.add_edge("convert_text_to_speech_node", END)
@@ -270,7 +272,7 @@ class ReadAloudAssistant:
         """
         Validate the file format of the uploaded file.
         """
-        file = state["file"]
+        file = BytesIO(state["file"])
         error = None
 
         if self._get_file_format(file=file) not in SUPPORTED_FORMATS:
@@ -284,7 +286,7 @@ class ReadAloudAssistant:
         """
         Extract text from a PDF file, removing header and footer lines.
         """
-        pdf_file = state["file"]
+        pdf_file = BytesIO(state["file"])
         pages_to_process = state["pages_to_process"]
 
         pdf = pdfium.PdfDocument(pdf_file)
@@ -404,5 +406,8 @@ class ReadAloudAssistant:
             audio_chunks.append(audios_from_text_between_pauses)
 
         audio = np.concatenate(audio_chunks)
+
+        # Convert numpy array to list of floats for InMemorySaver compatibility
+        audio = audio.tolist()
         
         return {"audio": audio}
